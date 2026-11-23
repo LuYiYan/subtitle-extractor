@@ -77,9 +77,12 @@ def main():
     module.make()
 
     import qpt
-    from backend.tools.windowed_launcher import install_windowed_launcher
+    helper_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "windowed_launcher.py")
+    spec = importlib.util.spec_from_file_location("windowed_launcher", helper_path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
     qpt_main = os.path.join(os.path.dirname(qpt.__file__), "ext", "launcher", "Main.exe")
-    install_windowed_launcher(
+    helper.install_windowed_launcher(
         os.path.join(SAVE_PATH, "Release"),
         qpt_main,
         icon_path=ICON_PATH,
