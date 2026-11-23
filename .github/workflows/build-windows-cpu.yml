@@ -1,24 +1,51 @@
 name: Build Windows CPU
 
-on: 
-  push:
-    branches:
-      - '**'
+# 给其他人试用的便携包。与上游一样用 QPT 打出「启动程序.exe」，再打成不超过
+# GitHub 单文件 2GB 限制的 7z。推送到 main 或本打包分支时自动发布。
+on:
   workflow_dispatch:
     inputs:
       ssh:
         description: 'SSH connection to Actions'
         required: false
         default: false
+  push:
+    branches:
+      - main
+      - cursor/windows-portable-c61f
 
 permissions:
   contents: write
 
+concurrency:
+  group: windows-cpu-portable
+  cancel-in-progress: false
+
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-2022
+    timeout-minutes: 360
     steps:
+    - name: Free disk space
+      shell: pwsh
+      run: |
+        Write-Host ("Free before: {0:N1} GB" -f ((Get-PSDrive C).Free / 1GB))
+        @(
+          "$env:ProgramFiles\Android",
+          "${env:ProgramFiles(x86)}\Android",
+          "C:\Program Files\Microsoft SQL Server",
+          "C:\Program Files (x86)\Microsoft SQL Server",
+          "C:\Program Files (x86)\Microsoft Visual Studio\Shared"
+        ) | ForEach-Object {
+          if (Test-Path $_) {
+            Write-Host "Removing $_"
+            Remove-Item -LiteralPath $_ -Recurse -Force -ErrorAction SilentlyContinue
+          }
+        }
+        Write-Host ("Free after: {0:N1} GB" -f ((Get-PSDrive C).Free / 1GB))
     - uses: actions/checkout@v4
+      with:
+        lfs: true
     - name: 读取 VERSION
       id: version
       run: |
@@ -26,21 +53,37 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       shell: bash
-    # - name: 检查 tag 是否已存在
-    #   run: |
-    #     TAG_NAME="${VERSION}"
-    #     if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME"; then
-    #       echo "Tag $TAG_NAME 已存在，发布中止"
-    #       exit 1
-    #     fi
-    #   shell: bash
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        cache: 'pip' # caching pip dependencies
+    - name: 确认 Git LFS 权重已落地
+      shell: bash
+      run: |
+        python - <<'PY'
+        import os, sys
+        checks = [
+            "backend/models/sttn-auto/infer_model.pth",
+            "backend/models/big-lama/big-lama_1.pt",
+            "backend/ffmpeg/win_x64/ffmpeg_1.exe",
+            "backend/fonts/NotoSansCJKtc-Regular.otf",
+        ]
+        failed = False
+        for path in checks:
+            size = os.path.getsize(path)
+            with open(path, "rb") as handle:
+                head = handle.read(40)
+            pointer = head.startswith(b"version https://git-lfs.github.com/spec/v1")
+            print(f"{path}: {size} bytes pointer={pointer}")
+            if pointer or size < 1000:
+                failed = True
+        if failed:
+            sys.exit("Git LFS files are still pointers. The portable app would not run.")
+        PY
     - name: 禁用硬件加速
       run: sed -i 's/HARDWARD_ACCELERATION_OPTION *= *.*/HARDWARD_ACCELERATION_OPTION = False/g' backend/config.py
       shell: bash
+    - name: 下载繁体识别模型
+      run: python backend/tools/fetch_rec_model.py
     - run: pip install paddlepaddle==3.0.0
     - run: pip install torch==2.7.0 torchvision==0.22.0
     - run: pip install -r requirements.txt
@@ -61,38 +104,30 @@ jobs:
     - name: Start SSH via tmate
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
       uses: mxschmitt/action-tmate@v3
-    - run: |
+    - name: QPT 打包
+      run: |
         python backend/tools/makedist.py && \
         mv ../vsr_out ./vsr_out && \
         cp ./vsr_out/Debug/Debug-进入虚拟环境.cmd ./vsr_out/Release/ && \
-        sed -i 's/force=False)/force=False)\n            exit(-1)/g' ./vsr_out/*/Python/Lib/site-packages/qpt/executor.py
+        sed -i 's/force=False)/force=False)\n            exit(-1)/g' ./vsr_out/*/Python/Lib/site-packages/qpt/executor.py && \
+        test -f ./vsr_out/Release/启动程序.exe && \
+        test -f ./vsr_out/Release/使用说明.txt && \
+        rm -rf ./vsr_out/Debug
       env:
         QPT_Action: "True"
       shell: bash
-    - name: 上传 Debug 文件夹到 Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: vsr-v${{ env.VERSION }}-windows-cpu-debug
-        path: vsr_out/Debug/
-    - name: 上传 Release 文件夹到 Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: vsr-v${{ env.VERSION }}-windows-cpu-release
-        path: vsr_out/Release/
-    - name: 打包 Release 文件夹
-      run: |
-        cd vsr_out/Release
-        7z a -t7z -mx=9 -m0=LZMA2 -ms=on -mfb=64 -md=32m -mmt=on -v2000m vsr-v${{ env.VERSION }}-windows-cpu.7z * && \
-        # 检测是否只有一个分卷
-        if [ -f vsr-v${{ env.VERSION }}-windows-cpu.7z.001 ] && [ ! -f vsr-v${{ env.VERSION }}-windows-cpu.7z.002 ]; then \
-          mv vsr-v${{ env.VERSION }}-windows-cpu.7z.001 vsr-v${{ env.VERSION }}-windows-cpu.7z; fi
+    - name: 打成 7z
+      run: bash packaging/archive_release.sh windows-cpu "$VERSION"
       shell: bash
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        prerelease: true
-        tag_name: ${{ env.VERSION }}
+        prerelease: false
+        make_latest: true
+        tag_name: v${{ env.VERSION }}
         target_commitish: ${{ github.sha }}
-        name: 硬字幕去除器 v${{ env.VERSION }}
+        name: 字幕去除与繁体转换 v${{ env.VERSION }}（Windows 便携版）
+        body_path: packaging/RELEASE_zh.md
         files: |
-          vsr_out/Release/vsr-v${{ env.VERSION }}-windows-cpu.7z*
+          vsr_out/Release/subtitle-extractor-v${{ env.VERSION }}-windows-cpu.7z*
+          vsr_out/Release/subtitle-extractor-v${{ env.VERSION }}-windows-cpu.sha256

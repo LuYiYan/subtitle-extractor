@@ -4,6 +4,37 @@
 
 关闭这项能力时，擦除流程与上游一致。
 
+## 给普通用户：直接下载 Windows 版
+
+不用安装 Python。当前仓库是公开的，发布页上的文件任何人都能下载。
+
+1. 打开 [Releases](https://github.com/LuYiYan/subtitle-extractor/releases/latest)。
+2. 下载所有名字里带 **`windows-cpu`** 的文件（便携版，不挑显卡）。
+   - 只有一个 `.7z`：安装 [7-Zip](https://www.7-zip.org/)，右键该文件，解压。
+   - 有 `.7z.001`、`.7z.002` ……：这些是同一个压缩包的分卷（GitHub 单个文件不能超过 2GB）。请全部放到同一个文件夹，右键 `.001`，用 7-Zip 解压。少下一个分卷就解不开。
+3. 进入解压出来的文件夹，双击 **`启动程序.exe`**。
+4. 第一次打开会展开自带的运行环境，请多等一会儿。黑色窗口要留着，关掉它程序也会退出。
+5. 窗口标题是「字幕去除器」。
+
+试视频：
+
+1. 点「打开」，选一个短的 mp4，在画面上框住底部字幕。
+2. 只去硬字幕：不要开「硬字幕转繁体」，点「运行」。
+3. 把简体硬字幕换成台湾用语繁体：打开「硬字幕转繁体」，再点「运行」。需要字幕文件时再打开「导出繁体 SRT」。
+4. 校对过 SRT 后，到「设置」里的「繁体字幕」，选中那份文件并打开「烧录修正后的 SRT」，再运行。
+
+试图片：
+
+1. 点「打开」，选 jpg 或 png，框住要处理的文字。
+2. 打开「硬字幕转繁体」再运行：识别文字、擦掉、写成繁体。图片会自动用 LAMA。
+3. 只想擦字、不重写：不要打开「硬字幕转繁体」。
+
+这个 CPU 包里已经有：Python、CPU 版 PyTorch 和 Paddle、FFmpeg、Noto Sans CJK TC、去字幕模型（STTN / LAMA / ProPainter）、文字检测模型，以及文字识别模型 `PP-OCRv5_server_rec`。转繁体的目标是台湾用语繁体（OpenCC `s2twp`），英文和数字保持原样。正常使用不用再下载模型。只有自己打包时跳过了识别模型，第一次转繁体才会由 PaddleOCR 联网下载。
+
+同一发布页如果还有 `windows-directml` 或 `windows-nvidia-cuda` 压缩包，那是显卡加速版，打开方式相同。普通试用请用 `windows-cpu`。
+
+macOS 和 Linux 没有单独的桌面安装包，这和上游项目一样。请继续看下面的源码安装；维护者也可以在 Actions 里手动运行 Docker 工作流。
+
 ![License](https://img.shields.io/badge/License-Apache%202.0-red.svg)
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 
@@ -284,6 +315,52 @@ python backend/image_text.py -i input.png -o output.png --target-lang zh-Hant --
 ## 字体
 
 `backend/fonts/NotoSansCJKtc-Regular.otf` 是 Noto Sans CJK TC Regular。版权为 Copyright 2014-2021 Adobe，Noto 是 Google 的商标，授权是 SIL Open Font License 1.1，全文在 `backend/fonts/OFL.txt`。该字体不适用 Apache-2.0。
+
+## 打包 Windows 便携版
+
+产物和上游相同：一个免安装目录，入口是「启动程序.exe」，再用 7-Zip 打成单个 `.7z` 或每卷不超过 2000MB 的分卷。打包工具是 [QPT](https://github.com/QPT-Family/QPT) `1.0b8`，不是 PyInstaller，也不是 Inno Setup。上游没有提供 macOS / Linux 安装包；本仓库同样只自动发布 Windows CPU 便携版。CUDA、DirectML 包和 Docker 镜像保留为手动工作流。
+
+在 Windows 10 或 Windows 11 上，用 Python 3.12：
+
+```shell
+git lfs install
+git clone https://github.com/LuYiYan/subtitle-extractor.git
+cd subtitle-extractor
+git lfs pull
+python -m venv videoEnv
+videoEnv\Scripts\activate
+pip install paddlepaddle==3.0.0
+pip install torch==2.7.0 torchvision==0.22.0
+pip install -r requirements.txt
+pip install QPT==1.0b8 setuptools
+python backend/tools/fetch_rec_model.py
+python backend/tools/makedist.py
+```
+
+`git lfs pull` 必须成功。权重和 `backend/ffmpeg/win_x64/ffmpeg_*.exe` 如果还是一两百字节、开头为 `version https://git-lfs.github.com/spec/v1`，打出来的程序无法去字幕。
+
+`fetch_rec_model.py` 会把约 81MB 的 `PP-OCRv5_server_rec` 下载到 `backend/models/V5/ch_rec/`（该目录不提交）。跳过这一步时，安装包仍能在用户第一次转繁体时再下载。
+
+打包结果在仓库上一级目录的 `vsr_out/Release/`：
+
+- 双击 `启动程序.exe` 打开界面。请把还没运行过的 Release 目录交给别人。QPT 的部署文件在第一次运行后会被用掉，本机先双击再压缩，别人可能打不开。要自己试，请用 `vsr_out/Debug/`。
+- `使用说明.txt` 会放在 `启动程序.exe` 旁边。
+- 显卡版把最后一条换成 `python backend/tools/makedist.py --cuda 11.8`、`--cuda 12.6`、`--cuda 12.8` 或 `--directml`，并先装对应的 Torch。
+
+打成可上传的压缩包（在仓库根目录，已装 7-Zip 并把 `7z` 加进 PATH）：
+
+```shell
+bash packaging/archive_release.sh windows-cpu 1.4.0
+```
+
+版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.0-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
+
+GitHub Actions：
+
+- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.0](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.0)。
+- 「Build Windows CUDA 11.8 / 12.6 / 12.8」和「Build Windows DirectML」只在 Actions 页面手动运行，产物附加到同一个 Release。
+- 构建机会先 `actions/checkout` 打开 `lfs: true`，避免把 LFS 指针打进安装包。
+- QPT 1.0b8 在读取依赖时可能遇到 `TypeError`。工作流会改 `qpt/kernel/qpackage.py` 里 `dep = pkg.requires()` 那一行，改成先 `try`，遇到 `TypeError` 就 `continue`。本机打包如果停在这里，做同样的修改。
 
 ## 测试
 

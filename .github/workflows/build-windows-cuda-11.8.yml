@@ -1,9 +1,7 @@
 name: Build Windows CUDA 11.8
 
-on: 
-  push:
-    branches:
-      - '**'
+# 显卡加速包按需手动构建，避免和 CPU 试用包抢同一个 Release。
+on:
   workflow_dispatch:
     inputs:
       ssh:
@@ -16,9 +14,11 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
     - uses: actions/checkout@v4
+      with:
+        lfs: true
     - name: 读取 VERSION
       id: version
       run: |
@@ -38,6 +38,8 @@ jobs:
       with:
         python-version: '3.12'
         cache: 'pip' # caching pip dependencies
+    - name: 下载繁体识别模型
+      run: python backend/tools/fetch_rec_model.py
     - run: pip install paddlepaddle==3.0.0
     - run: pip install -r requirements.txt
     - run: pip freeze > requirements.txt
@@ -66,30 +68,20 @@ jobs:
       env:
         QPT_Action: "True"
       shell: bash
-    - name: 上传 Debug 文件夹到 Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8-debug
-        path: vsr_out/Debug/
-    - name: 上传 Release 文件夹到 Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8-release
-        path: vsr_out/Release/
-    - name: 打包 Release 文件夹
+    - name: 打成 7z
       run: |
-        cd vsr_out/Release
-        7z a -t7z -mx=9 -m0=LZMA2 -ms=on -mfb=64 -md=32m -mmt=on -v2000m vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z * && \
-        # 检测是否只有一个分卷
-        if [ -f vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z.001 ] && [ ! -f vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z.002 ]; then \
-          mv vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z.001 vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z; fi
+        rm -rf ./vsr_out/Debug
+        bash packaging/archive_release.sh windows-nvidia-cuda-11.8 "$VERSION"
       shell: bash
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        prerelease: true
-        tag_name: ${{ env.VERSION }}
+        prerelease: false
+        make_latest: true
+        tag_name: v${{ env.VERSION }}
         target_commitish: ${{ github.sha }}
-        name: 硬字幕去除器 v${{ env.VERSION }}
+        name: 字幕去除与繁体转换 v${{ env.VERSION }}（Windows 便携版）
+        body_path: packaging/RELEASE_zh.md
         files: |
-          vsr_out/Release/vsr-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z*
+          vsr_out/Release/subtitle-extractor-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.7z*
+          vsr_out/Release/subtitle-extractor-v${{ env.VERSION }}-windows-nvidia-cuda-11.8.sha256

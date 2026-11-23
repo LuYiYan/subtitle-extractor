@@ -1,9 +1,7 @@
 name: Docker Build and Push
 
+# Linux / macOS 没有桌面安装包。需要镜像时手动运行本工作流。
 on:
-  push:
-    branches:
-      - '**'
   workflow_dispatch:
 
 jobs:
