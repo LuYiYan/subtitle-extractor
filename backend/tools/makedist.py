@@ -72,11 +72,6 @@ def main():
         hidden_terminal=False,
         requirements_file="./requirements.txt",
         sub_modules=sub_modules,
-        ignore_dirs=[
-            os.path.join(WORK_DIR, "tests"),
-            os.path.join(WORK_DIR, "docker"),
-            os.path.join(WORK_DIR, ".github"),
-        ],
     )
 
     module.make()
