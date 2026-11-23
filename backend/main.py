@@ -603,6 +603,25 @@ if __name__ == '__main__':
     multiprocessing.set_start_method("spawn")
     from backend.tools.args_handler import parse_args
     args = parse_args()
+    if args.target_lang:
+        from backend.tools.common_tools import is_image_file
+        from backend.tools.image_text import convert_image_file
+        if not is_image_file(args.input):
+            print("Error: --target-lang converts a still image. For video, use --to-traditional.")
+            raise SystemExit(2)
+        areas = [tuple(area) for area in args.subtitle_area_coords] if args.subtitle_area_coords else None
+        result = convert_image_file(
+            args.input,
+            args.output,
+            target=args.target_lang,
+            font_path=args.font,
+            areas=areas,
+            inpaint_mode="opencv",
+        )
+        print(f"Saved {result.output_path}")
+        for change in result.changes:
+            print(f"{change.original} -> {change.translated}")
+        raise SystemExit(0)
     # force english
     config.set(config.interface, 'en')
     TRANSLATION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'interface', f"{config.interface.value}.ini")

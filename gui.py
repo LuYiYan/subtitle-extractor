@@ -26,6 +26,7 @@ from backend.tools.theme_listener import SystemThemeListener
 from backend.tools.process_manager import ProcessManager
 from ui.advanced_setting_interface import AdvancedSettingInterface
 from ui.home_interface import HomeInterface
+from ui.image_text_interface import ImageTextInterface
 
 
 class SubtitleExtractorGUI(FluentWindow): 
@@ -74,11 +75,14 @@ class SubtitleExtractorGUI(FluentWindow):
         # 创建主页面和高级设置页面
         self.homeInterface = HomeInterface(self)
         self.homeInterface.setObjectName("HomeInterface")
+        self.imageTextInterface = ImageTextInterface(self)
+        self.imageTextInterface.setObjectName("ImageTextInterface")
         self.advancedSettingInterface = AdvancedSettingInterface(self)
         self.advancedSettingInterface.setObjectName("AdvancedSettingInterface")
         
         # 添加到主窗口作为子界面
         self.addSubInterface(self.homeInterface,FluentIcon.HOME, tr['SubtitleExtractorGUI']['Title'])
+        self.addSubInterface(self.imageTextInterface, FluentIcon.PHOTO, tr['ImageText']['Title'])
         self.addSubInterface(self.advancedSettingInterface, FluentIcon.SETTING, tr['Setting']['AdvancedSetting'], NavigationItemPosition.BOTTOM)
 
     def on_navigation_item_changed(self, key):

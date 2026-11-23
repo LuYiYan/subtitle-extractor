@@ -20,6 +20,7 @@
 - 可选导出繁体 `.srt`。
 - 可选 `--burn-srt`：校对 SRT 之后，再擦一遍并把校对稿烧回去。
 - 命令行和原来的图形界面都可以打开这些开关。
+- 静图文字转换：检测并识别图片里的文字，只擦掉需要替换的字，再按原来的位置、大小、近似颜色和对齐画上译文，其余像素不动。默认目标语言是繁体中文（OpenCC `s2twp`，与视频功能相同）。也可以改成英文、日文、韩文、西班牙文、越南文或简体中文。没有汉字的文字（例如英文和数字）保持原样。
 
 ## 环境
 
@@ -168,6 +169,49 @@ python gui.py
 
 高级设置里可以换字体，以及选择一份修正后的 SRT 并打开「烧录修正后的 SRT」。字体留空时使用 `backend/fonts/NotoSansCJKtc-Regular.otf`。
 
+## 图片文字转换
+
+给客户发图之前，可以把图里的简体说明换成台湾用语繁体，或换成其他语言。检测和识别复用视频那套 PP-OCRv5，擦字默认用 OpenCV（不需要显卡），也可以改用仓库里的 LAMA 权重。绘制字体同样是内置 Noto Sans CJK TC，或用 `--font` 指定。
+
+```shell
+python backend/image_text.py -i input.jpg -o output.jpg --target-lang zh-Hant
+```
+
+不写 `--target-lang` 时也是 `zh-Hant`。换成英文：
+
+```shell
+python backend/image_text.py -i input.jpg -o output_en.jpg --target-lang en
+```
+
+英文及其他非中文目标需要网络，并安装 `deep-translator`（已写在 `requirements.txt`）。程序只把汉字交给翻译，`Hello 2024` 这类没有汉字的内容不会改。繁体和简体转换在本地用 OpenCC 完成，不访问网络。
+
+同一条命令也可以走原来的入口。只有加上 `--target-lang` 且输入是图片时才会走图片转换；不加这个参数时，视频和图片的去字幕行为与原来一致。
+
+```shell
+python backend/main.py -i input.jpg -o output.jpg --target-lang zh-Hant
+python backend/image_text.py --list-targets
+python backend/image_text.py -i input.png -o output.png --target-lang zh-Hant --inpaint lama --comparison docs/demo/compare.png
+```
+
+可选参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `-i` / `--input` | 输入图片，jpg、png、webp、bmp、tif |
+| `-o` / `--output` | 输出图片。省略时文件名为 `<原名>_zh-Hant.jpg` 这种形式 |
+| `--target-lang` / `--target` | `zh-Hant`（默认）、`en`、`ja`、`ko`、`es`、`vi`、`zh-Hans`。`zh-tw`、`traditional` 等等价于 `zh-Hant` |
+| `--font` | 字体路径。省略时用 `backend/fonts/NotoSansCJKtc-Regular.otf` |
+| `--inpaint` | `opencv`（默认）或 `lama` |
+| `-c` / `--area YMIN YMAX XMIN XMAX` | 只转换这个区域，可重复。不传则看整张图 |
+| `--comparison PATH` | 另存一张左原图、右结果的对比图 |
+| `--list-targets` | 打印可选语言 |
+
+图形界面里打开「图片文字」页：选择图片、选择目标语言、点转换后会并排预览，再保存给客户的新图。目标语言会记在配置里，默认繁体中文。
+
+左边是原图，右边是转成繁体后的结果。蓝色色块和 `Hello 2024` 没有被改动。
+
+![图片文字转换前后](docs/demo/image_text_before_after.png)
+
 ## 命令行参数
 
 | 参数 | 说明 |
@@ -180,6 +224,7 @@ python gui.py
 | `--export-srt [PATH]` | 导出繁体 SRT。不写 PATH 时与输出文件同名 |
 | `--burn-srt PATH` | 擦除后把这份 SRT 烧回选区。和 `--to-traditional` 一起用时，SRT 文本会再做 `s2twp` |
 | `--font PATH` | `.otf` / `.ttf` / `.ttc`。省略时用内置 Noto Sans CJK TC |
+| `--target-lang LANG` | 仅静图。把图中文字换成该语言后另存。不传则不改变原有去字幕流程 |
 | `-h` / `--help` | 打印以上说明 |
 
 ## 配置参数
@@ -211,6 +256,7 @@ python gui.py
 | `traditionalFontPath` | 空 | 空则使用内置 Noto Sans CJK TC |
 | `burnCorrectedSrt` | 关 | 是否烧录 `burnSrtPath` |
 | `burnSrtPath` | 空 | 校对后的 SRT 路径 |
+| `imageTargetLang` | `zh-Hant` | 图片文字页记住的目标语言 |
 
 模型怎么选：
 

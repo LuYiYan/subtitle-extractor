@@ -153,6 +153,7 @@ class TraditionalConversionTest(unittest.TestCase):
             self.assertFalse(args.to_traditional)
             self.assertEqual(args.export_srt, 'out.srt')
             self.assertIsNone(args.burn_srt)
+            self.assertIsNone(args.target_lang)
         finally:
             sys.argv = argv
 

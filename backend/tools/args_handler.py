@@ -41,6 +41,11 @@ def parse_args():
         "--font", default=None, metavar="PATH",
         help="重绘字体，支持 .otf/.ttf/.ttc。默认使用内置 Noto Sans CJK TC"
     )
+    parser.add_argument(
+        "--target-lang", "--target", dest="target_lang", default=None, metavar="LANG",
+        help="只用于静图：把图中的文字换成目标语言后另存。默认不启用。"
+             "zh-Hant 为 OpenCC s2twp 繁体，还可选 en、ja、ko、es、vi、zh-Hans"
+    )
     args = parser.parse_args()
     args.inpaint_mode = InpaintMode[args.inpaint_mode.replace('-', '_').upper()]
     if args.subtitle_area_coords is None:
