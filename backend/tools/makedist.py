@@ -1,10 +1,20 @@
 import argparse
+import importlib.util
 import os
+import shutil
 from qpt.executor import CreateExecutableModule as CEM
 from qpt.modules.cuda import CopyCUDAPackage
 from qpt.smart_opt import set_default_pip_source
 from qpt.kernel.qinterpreter import PYPI_PIP_SOURCE
 from qpt.modules.package import CustomPackage, DEFAULT_DEPLOY_MODE
+
+
+def _ensure_recognition_model():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_rec_model.py")
+    spec = importlib.util.spec_from_file_location("fetch_rec_model", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.ensure_recognition_model()
 
 
 
@@ -33,6 +43,12 @@ def main():
 
     args = parser.parse_args()
 
+    # 识别模型不在上游仓库里。打进包里后，试用者第一次转繁体不必再下载。
+    try:
+        _ensure_recognition_model()
+    except Exception as exc:
+        print(f"警告: 未能下载 PP-OCRv5 识别模型，安装包将在第一次转繁体时再下载。{exc}")
+
     sub_modules = []
 
     if args.cuda == "11.8":
@@ -56,9 +72,19 @@ def main():
         hidden_terminal=False,
         requirements_file="./requirements.txt",
         sub_modules=sub_modules,
+        ignore_dirs=[
+            os.path.join(WORK_DIR, "tests"),
+            os.path.join(WORK_DIR, "docker"),
+            os.path.join(WORK_DIR, ".github"),
+        ],
     )
 
     module.make()
+
+    guide = os.path.join(WORK_DIR, "packaging", "使用说明.txt")
+    release_dir = os.path.join(SAVE_PATH, "Release")
+    if os.path.isfile(guide) and os.path.isdir(release_dir):
+        shutil.copyfile(guide, os.path.join(release_dir, "使用说明.txt"))
 
 
 if __name__ == '__main__':

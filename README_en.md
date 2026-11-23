@@ -1,6 +1,8 @@
 [简体中文](README.md) | English
 
-> This repository is [subtitle-extractor](https://github.com/LuYiYan/subtitle-extractor), based on [YaoFANGUK/video-subtitle-remover](https://github.com/YaoFANGUK/video-subtitle-remover) (Apache-2.0). It adds optional hardcoded-subtitle conversion to Traditional Chinese. See the Chinese README for install, Git LFS weights, and `--to-traditional` / `--export-srt` / `--burn-srt`. With those switches off, removal matches upstream.
+> This repository is [subtitle-extractor](https://github.com/LuYiYan/subtitle-extractor), based on [YaoFANGUK/video-subtitle-remover](https://github.com/YaoFANGUK/video-subtitle-remover) (Apache-2.0). It adds optional hardcoded-subtitle conversion to Traditional Chinese (OpenCC `s2twp`). With those switches off, removal matches upstream.
+>
+> Windows users can download a portable build and double-click `启动程序.exe` with no Python install. See the Chinese README section 「给普通用户」and [Releases](https://github.com/LuYiYan/subtitle-extractor/releases/latest). Download every file whose name contains `windows-cpu`. macOS and Linux do not have a desktop installer; use the source steps below or the manual Docker workflow.
 
 <div align="center">
   <img src="design/icon_1024.PNG" alt="VSR Logo" width="128" height="128">
@@ -28,12 +30,12 @@ It mainly implements the following functionalities:
 
 **Instructions:**
 
-- If you have questions, please join the discussion group: QQ Group 210150985 (full), 806152575 (full), 816881808 (full), 295894827
-- Download the compressed package, extract and run it directly. If it cannot run, follow the tutorial below to try installing from source
+- Download this project's Windows portable build from [Releases](https://github.com/LuYiYan/subtitle-extractor/releases/latest) (files named `windows-cpu`). Extract with 7-Zip and run `启动程序.exe`. No Python setup.
+- If that package cannot run, follow the source tutorial below.
 
-**Download:** <a href="https://github.com/YaoFANGUK/video-subtitle-remover/releases">Release</a>
+**Download:** <a href="https://github.com/LuYiYan/subtitle-extractor/releases/latest">Release</a>
 
-**Pre-built Package Comparison**:
+**Pre-built Package Comparison** (upstream variant matrix; this repo's files are named `subtitle-extractor-v<version>-windows-cpu.7z` and, when built by hand, `windows-directml` / `windows-nvidia-cuda-*`):
 
 | Pre-built Package Name            | Python | Paddle | Torch | Environment                    | Supported Compute Capability Range |
 |-----------------------------------|--------|--------|-------|--------------------------------|------------------------------------|
