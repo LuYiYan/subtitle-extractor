@@ -13,8 +13,8 @@
    - 只有一个 `.7z`：安装 [7-Zip](https://www.7-zip.org/)，右键该文件，解压。
    - 有 `.7z.001`、`.7z.002` ……：这些是同一个压缩包的分卷（GitHub 单个文件不能超过 2GB）。请全部放到同一个文件夹，右键 `.001`，用 7-Zip 解压。少下一个分卷就解不开。
 3. 进入解压出来的文件夹，双击 **`启动程序.exe`**。
-4. 第一次打开会展开自带的运行环境，请多等一会儿。黑色窗口要留着，关掉它程序也会退出。
-5. 窗口标题是「字幕去除器」。
+4. 第一次打开会先出现「正在准备运行环境」窗口。请等它自己关掉。准备完成后只留下「字幕去除器」窗口，没有需要一直开着的黑窗口。关掉准备窗口只会中断准备，不会在程序已经打开之后把界面关掉。
+5. 之后再双击「启动程序.exe」，只打开图形界面。
 
 试视频：
 
@@ -25,9 +25,10 @@
 
 试图片：
 
-1. 点「打开」，选 jpg 或 png，框住要处理的文字。
-2. 打开「硬字幕转繁体」再运行：识别文字、擦掉、写成繁体。图片会自动用 LAMA。
-3. 只想擦字、不重写：不要打开「硬字幕转繁体」。
+1. 点右侧 **「导入图片」**，选 jpg、png 或 webp。左侧预览会显示这张图。
+2. 在预览上框住要转换的文字，打开「硬字幕转繁体」，再点「运行」。图片会自动用 LAMA。
+3. 完成后，预览左边是原图、右边是结果。点 **「保存图片」**，把结果发给客户。
+4. 只想擦字、不重写：不要打开「硬字幕转繁体」，运行后再保存。
 
 这个 CPU 包里已经有：Python、CPU 版 PyTorch 和 Paddle、FFmpeg、Noto Sans CJK TC、去字幕模型（STTN / LAMA / ProPainter）、文字检测模型，以及文字识别模型 `PP-OCRv5_server_rec`。转繁体的目标是台湾用语繁体（OpenCC `s2twp`），英文和数字保持原样。正常使用不用再下载模型。只有自己打包时跳过了识别模型，第一次转繁体才会由 PaddleOCR 联网下载。
 
@@ -295,7 +296,7 @@ python backend/tools/makedist.py
 
 `fetch_rec_model.py` 会把约 81MB 的 `PP-OCRv5_server_rec` 下载到 `backend/models/V5/ch_rec/`（该目录不提交）。跳过这一步时，安装包仍能在用户第一次转繁体时再下载。
 
-打包结果在仓库上一级目录的 `vsr_out/Release/`：
+打包结果在仓库上一级目录的 `vsr_out/Release/`。`makedist.py` 会把入口换成 QPT 自带的窗口程序 `Main.exe`，并用 `pythonw.exe` 启动界面，所以命令行窗口不再挂住图形界面。
 
 - 双击 `启动程序.exe` 打开界面。请把还没运行过的 Release 目录交给别人。QPT 的部署文件在第一次运行后会被用掉，本机先双击再压缩，别人可能打不开。要自己试，请用 `vsr_out/Debug/`。
 - `使用说明.txt` 会放在 `启动程序.exe` 旁边。
@@ -304,14 +305,14 @@ python backend/tools/makedist.py
 打成可上传的压缩包（在仓库根目录，已装 7-Zip 并把 `7z` 加进 PATH）：
 
 ```shell
-bash packaging/archive_release.sh windows-cpu 1.4.0
+bash packaging/archive_release.sh windows-cpu 1.4.1
 ```
 
-版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.0-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
+版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.1-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
 
 GitHub Actions：
 
-- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.0](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.0)。
+- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.1](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.1)。
 - 「Build Windows CUDA 11.8 / 12.6 / 12.8」和「Build Windows DirectML」只在 Actions 页面手动运行，产物附加到同一个 Release。
 - 构建机会先 `actions/checkout` 打开 `lfs: true`，避免把 LFS 指针打进安装包。
 - QPT 1.0b8 在读取依赖时可能遇到 `TypeError`。工作流会改 `qpt/kernel/qpackage.py` 里 `dep = pkg.requires()` 那一行，改成先 `try`，遇到 `TypeError` 就 `continue`。本机打包如果停在这里，做同样的修改。

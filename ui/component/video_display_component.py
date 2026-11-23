@@ -157,11 +157,16 @@ class VideoDisplayComponent(QWidget):
             border-bottom-right-radius: 8px;        
         """)
         black_layout.addWidget(control_container)
+        self.timeline_container = control_container
         
         self.black_container.setLayout(black_layout)
         video_layout.addWidget(self.black_container)
         self.video_container.setLayout(video_layout)
         main_layout.addWidget(self.video_container)
+
+    def set_timeline_visible(self, visible):
+        """Hide the frame slider while a still image is on screen."""
+        self.timeline_container.setVisible(bool(visible))
     
     def __init_shotcuts(self):
         """初始化快捷键"""

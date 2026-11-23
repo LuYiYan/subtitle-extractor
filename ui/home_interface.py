@@ -1,5 +1,7 @@
 import os
+import shutil
 import cv2
+import numpy as np
 import threading
 import multiprocessing
 import time
@@ -8,7 +10,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 from PySide6.QtCore import Slot, QRect, Signal
 from PySide6 import QtWidgets
 from datetime import datetime
-from qfluentwidgets import (PushButton, CardWidget, TextEdit, FluentIcon)
+from qfluentwidgets import (PushButton, PrimaryPushButton, CardWidget, TextEdit, FluentIcon, BodyLabel)
 from ui.setting_interface import SettingInterface
 from ui.component.video_display_component import VideoDisplayComponent
 from ui.component.task_list_component import TaskListComponent, TaskStatus, TaskOptions
@@ -27,6 +29,7 @@ class HomeInterface(QWidget):
     toggle_buttons_signal = Signal(bool)  # True=显示运行按钮, False=显示停止按钮
     task_status_signal = Signal(int, object)  # (task_index, TaskStatus)
     select_task_signal = Signal(int)  # task_index
+    image_ready_signal = Signal(str, str)  # original path, converted path
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setObjectName("HomeInterface")
@@ -52,6 +55,8 @@ class HomeInterface(QWidget):
         self.running_process = None
         self._saved_inpaint_mode = None  # 保存图片锁定前的 inpaint 模式
         self._video_cap_lock = threading.Lock()  # 保护 video_cap 的线程锁
+        self._converted_image_path = ""
+        self._source_image_path = ""
 
         # 当前正在处理的任务索引
         self.current_processing_task_index = -1
@@ -64,6 +69,7 @@ class HomeInterface(QWidget):
         self.toggle_buttons_signal.connect(self._toggle_buttons)
         self.task_status_signal.connect(lambda idx, status: self.task_list_component.update_task_status(idx, status))
         self.select_task_signal.connect(self.task_list_component.select_task)
+        self.image_ready_signal.connect(self.on_image_ready)
 
     def __init_widgets(self):
         """创建主页面"""
@@ -71,9 +77,12 @@ class HomeInterface(QWidget):
         main_layout.setSpacing(8)
         main_layout.setContentsMargins(16, 16, 16, 16)
 
-        # 左侧视频区域
+        # 左侧预览区域
         left_layout = QVBoxLayout()
         left_layout.setSpacing(8)
+
+        self.preview_caption = BodyLabel(tr['ImageConvert']['PreviewVideo'])
+        left_layout.addWidget(self.preview_caption)
         
         # 创建视频显示组件
         self.video_display_component = VideoDisplayComponent(self)
@@ -106,6 +115,28 @@ class HomeInterface(QWidget):
         # 右侧设置区域
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
+
+        image_card = CardWidget(self)
+        image_layout = QVBoxLayout(image_card)
+        image_layout.setContentsMargins(16, 16, 16, 16)
+        image_layout.setSpacing(8)
+        image_layout.addWidget(BodyLabel(tr['ImageConvert']['Title']))
+        image_buttons = QHBoxLayout()
+        image_buttons.setSpacing(8)
+        self.import_image_button = PrimaryPushButton(tr['ImageConvert']['Import'], self)
+        self.import_image_button.setIcon(FluentIcon.PHOTO)
+        self.import_image_button.clicked.connect(self.import_image)
+        image_buttons.addWidget(self.import_image_button)
+        self.save_image_button = PrimaryPushButton(tr['ImageConvert']['Save'], self)
+        self.save_image_button.setIcon(FluentIcon.SAVE)
+        self.save_image_button.setEnabled(False)
+        self.save_image_button.clicked.connect(self.save_converted_image)
+        image_buttons.addWidget(self.save_image_button)
+        image_layout.addLayout(image_buttons)
+        self.image_status_label = BodyLabel(tr['ImageConvert']['StatusEmpty'])
+        self.image_status_label.setWordWrap(True)
+        image_layout.addWidget(self.image_status_label)
+        right_layout.addWidget(image_card)
 
         # 设置容器
         settings_container = CardWidget(self)
@@ -377,9 +408,10 @@ class HomeInterface(QWidget):
                             task_obj = self.task_list_component.get_task(self.current_processing_task_index)
                             if process.exitcode == 0 and task_obj and task_obj.status == TaskStatus.PROCESSING:
                                 self.progress_signal.emit(100, True)
-                                # 任务完成, 更新输出路径为只读
                                 task_obj.output_path = output_path
                                 self.task_status_signal.emit(self.current_processing_task_index, TaskStatus.COMPLETED)
+                                if is_image_file(task_item.path):
+                                    self.image_ready_signal.emit(task_item.path, output_path)
                             else:
                                 self.task_status_signal.emit(self.current_processing_task_index, TaskStatus.FAILED)
 
@@ -532,7 +564,10 @@ class HomeInterface(QWidget):
             color = '#2980b9'
         html = f'<span style="color:#888;">[{timestamp}]</span> <span style="color:{color};">{escaped}</span><br>'
         self.output_text.append(html)
-        print(*args)  # 保持原始的 print 行为
+        try:
+            print(*args)  # pythonw 没有控制台时 stdout 为空
+        except Exception:
+            pass
         # 如果启用了自动滚动，则滚动到底部
         if self.auto_scroll:
             scrollbar = self.output_text.verticalScrollBar()
@@ -592,7 +627,8 @@ class HomeInterface(QWidget):
         self.video_slider.setMaximum(self.frame_count)
         self.video_slider.setValue(1)
         self.video_display_component.set_dragger_enabled(True)
-        # 视频模式下恢复用户原始的 inpaint 模式选择
+        self.video_display_component.set_timeline_visible(True)
+        self.preview_caption.setText(tr['ImageConvert']['PreviewVideo'])
         self._unlock_inpaint_mode()
         return True
 
@@ -612,6 +648,10 @@ class HomeInterface(QWidget):
         self.video_slider.setMaximum(self.frame_count)
         self.video_slider.setValue(1)
         self.video_display_component.set_dragger_enabled(True)
+        self.video_display_component.set_timeline_visible(False)
+        self.preview_caption.setText(tr['ImageConvert']['PreviewImage'])
+        self.image_status_label.setText(tr['ImageConvert']['StatusImported'].format(os.path.basename(path)))
+        self._source_image_path = path
         # 图片模式锁定为 LAMA
         self._lock_inpaint_mode_to_lama()
         return True
@@ -642,20 +682,96 @@ class HomeInterface(QWidget):
             "All Files (*.*);;Video Files (*.mp4 *.flv *.wmv *.avi *.mkv *.mov);;Image Files (*.jpg *.jpeg *.png *.bmp *.webp *.tiff)"
         )
         if files:
-            files_loaded = []
-            # 倒序打开, 确保第一个视频截图显示在屏幕上
-            for path in reversed(files):
-                if self.load_video(path):
-                    self.append_output(f"{tr['SubtitleExtractorGUI']['OpenVideoSuccess']}: {path}")
-                    files_loaded.append(path)
-                else:
-                    self.append_output(f"{tr['SubtitleExtractorGUI']['OpenVideoFailed']}: {path}")
-            # 正序添加, 确保任务列表顺序一致
-            for path in reversed(files_loaded):
-                # 添加到任务列表
-                self.task_list_component.add_task(path)
-                index = max(0, self.task_list_component.find_task_index_by_path(path))
-                self.task_list_component.select_task(index)
+            self.open_paths(files)
+
+    def import_image(self):
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(
+            self,
+            tr['ImageConvert']['Import'],
+            "",
+            tr['ImageConvert']['ImageFilter'],
+        )
+        if not files:
+            return
+        self.open_paths(files)
+        self.append_output(tr['ImageConvert']['ImportHint'])
+
+    def open_paths(self, files):
+        files_loaded = []
+        for path in reversed(files):
+            if self.load_video(path):
+                self.append_output(f"{tr['SubtitleExtractorGUI']['OpenVideoSuccess']}: {path}")
+                files_loaded.append(path)
+            else:
+                self.append_output(f"{tr['SubtitleExtractorGUI']['OpenVideoFailed']}: {path}")
+        for path in reversed(files_loaded):
+            self.task_list_component.add_task(path)
+            index = max(0, self.task_list_component.find_task_index_by_path(path))
+            self.task_list_component.select_task(index)
+
+    def on_image_ready(self, original_path, result_path):
+        self._source_image_path = original_path
+        self._converted_image_path = result_path if result_path and os.path.isfile(result_path) else ""
+        self.save_image_button.setEnabled(bool(self._converted_image_path))
+        if not self._converted_image_path:
+            self.image_status_label.setText(tr['ImageConvert']['StatusMissing'])
+            return
+        self.preview_caption.setText(tr['ImageConvert']['PreviewCompare'])
+        self.image_status_label.setText(tr['ImageConvert']['StatusReady'].format(os.path.basename(result_path)))
+        self._show_before_after(original_path, result_path)
+        self.append_output(tr['ImageConvert']['StatusReady'].format(result_path))
+
+    def _show_before_after(self, original_path, result_path):
+        original = read_image(original_path)
+        result = read_image(result_path)
+        if result is None:
+            return
+        if original is None:
+            self.update_preview(result)
+            return
+        if original.ndim == 2:
+            original = cv2.cvtColor(original, cv2.COLOR_GRAY2BGR)
+        if result.ndim == 2:
+            result = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+        if result.shape[:2] != original.shape[:2]:
+            result = cv2.resize(result, (original.shape[1], original.shape[0]))
+        gap = np.full((original.shape[0], 8, 3), 40, dtype=np.uint8)
+        self.update_preview(cv2.hconcat([original, gap, result]))
+
+    def save_converted_image(self):
+        source = self._converted_image_path
+        if not source or not os.path.isfile(source):
+            self.append_output(tr['ImageConvert']['StatusMissing'])
+            self.save_image_button.setEnabled(False)
+            return
+        suggested = os.path.basename(source)
+        dest, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            tr['ImageConvert']['Save'],
+            suggested,
+            tr['ImageConvert']['SaveFilter'],
+        )
+        if not dest:
+            return
+        ext = os.path.splitext(dest)[1].lower()
+        src_ext = os.path.splitext(source)[1].lower()
+        try:
+            if not ext or ext == src_ext:
+                if not ext:
+                    dest = dest + src_ext
+                shutil.copy2(source, dest)
+            else:
+                image = read_image(source)
+                if image is None:
+                    raise IOError(source)
+                ok, encoded = cv2.imencode(ext, image)
+                if not ok:
+                    raise IOError(ext)
+                encoded.tofile(dest)
+        except Exception as exc:
+            self.append_output(tr['ImageConvert']['SaveFailed'].format(exc))
+            return
+        self.append_output(tr['ImageConvert']['Saved'].format(os.path.abspath(dest)))
 
     def closeEvent(self, event):
         """窗口关闭时断开信号连接并清理资源"""

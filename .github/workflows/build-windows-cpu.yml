@@ -112,6 +112,8 @@ jobs:
         sed -i 's/force=False)/force=False)\n            exit(-1)/g' ./vsr_out/*/Python/Lib/site-packages/qpt/executor.py && \
         test -f ./vsr_out/Release/启动程序.exe && \
         test -f ./vsr_out/Release/使用说明.txt && \
+        grep -q pythonw.exe ./vsr_out/Release/configs/entry.cmd && \
+        python -c "import struct,sys; p=r'./vsr_out/Release/启动程序.exe'; d=open(p,'rb').read(512); o=struct.unpack_from('<I', d, 0x3C)[0]; sub=struct.unpack_from('<H', open(p,'rb').read(), o+24+68)[0]; sys.exit(0 if sub==2 else 'launcher is still a console exe')" && \
         rm -rf ./vsr_out/Debug
       env:
         QPT_Action: "True"

@@ -8,6 +8,10 @@
 
 import sys
 import os
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="replace")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="replace")
 import configparser
 import cv2
 import multiprocessing

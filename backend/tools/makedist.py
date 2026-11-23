@@ -76,6 +76,15 @@ def main():
 
     module.make()
 
+    import qpt
+    from backend.tools.windowed_launcher import install_windowed_launcher
+    qpt_main = os.path.join(os.path.dirname(qpt.__file__), "ext", "launcher", "Main.exe")
+    install_windowed_launcher(
+        os.path.join(SAVE_PATH, "Release"),
+        qpt_main,
+        icon_path=ICON_PATH,
+    )
+
     guide = os.path.join(WORK_DIR, "packaging", "使用说明.txt")
     release_dir = os.path.join(SAVE_PATH, "Release")
     if os.path.isfile(guide) and os.path.isdir(release_dir):
