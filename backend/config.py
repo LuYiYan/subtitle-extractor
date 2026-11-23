@@ -110,6 +110,9 @@ class Config(QConfig):
     traditionalFontPath = ConfigItem("Traditional", "FontPath", "", ConfigValidator())
     burnCorrectedSrt = ConfigItem("Traditional", "BurnCorrectedSrt", False, BoolValidator())
     burnSrtPath = ConfigItem("Traditional", "BurnSrtPath", "", ConfigValidator())
+
+    # 图片文字转换的默认目标语言。zh-Hant 使用 OpenCC s2twp，与视频繁体功能一致。
+    imageTargetLang = ConfigItem("ImageText", "TargetLang", "zh-Hant", ConfigValidator())
     
     # 启动时检查应用更新
     checkUpdateOnStartup = ConfigItem("Main", "CheckUpdateOnStartup", True, BoolValidator())

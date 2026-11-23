@@ -37,6 +37,7 @@ class TextLine:
     text: str
     bbox: tuple = None
     color_bgr: tuple = (255, 255, 255)
+    align: str = "center"
 
 
 @dataclass
@@ -441,7 +442,13 @@ def draw_text_line(frame_bgr, line, font_path):
         best_box = draw.textbbox((0, 0), line.text, font=font, stroke_width=stroke)
     text_w = best_box[2] - best_box[0]
     text_h = best_box[3] - best_box[1]
-    x = xmin + max(0, (box_w - text_w) // 2) - best_box[0]
+    align = getattr(line, "align", None) or "center"
+    if align == "left":
+        x = xmin - best_box[0]
+    elif align == "right":
+        x = xmax - text_w - best_box[0]
+    else:
+        x = xmin + max(0, (box_w - text_w) // 2) - best_box[0]
     y = ymin + max(0, (box_h - text_h) // 2) - best_box[1]
     color_bgr = line.color_bgr or (255, 255, 255)
     fill = (int(color_bgr[2]), int(color_bgr[1]), int(color_bgr[0]))

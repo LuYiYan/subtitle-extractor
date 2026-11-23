@@ -13,6 +13,7 @@ scipy
 requests
 darkdetect
 opencc-python-reimplemented==0.1.7
+deep-translator==1.11.4
 je-showinfilemanager==1.1.6a4
 # torch and torchvision are installed separately (see Dockerfile for platform-specific versions)
 
