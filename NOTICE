@@ -1,0 +1,21 @@
+subtitle-extractor
+https://github.com/LuYiYan/subtitle-extractor
+
+This product includes software from video-subtitle-remover, Copyright YaoFANGUK
+and contributors, licensed under the Apache License, Version 2.0. You may obtain
+a copy of the license in the LICENSE file. The upstream project is available at
+https://github.com/YaoFANGUK/video-subtitle-remover
+
+Changes in this distribution, relative to that upstream project:
+
+- Optional conversion of hardcoded subtitles to Traditional Chinese
+  (OpenCC s2twp, Taiwan wording), exposed in the CLI and the GUI.
+- Optional Traditional SRT export and a --burn-srt path that burns a
+  corrected SRT back onto the erased region.
+- Bundled Noto Sans CJK TC (SIL Open Font License 1.1). See backend/fonts/OFL.txt.
+- Official upstream LAMA, ProPainter, and STTN weights, kept in the upstream
+  split-part layout with fs_manifest.csv and stored with Git LFS.
+- The assembled LAMA filename checked before merging split parts is big-lama.pt.
+
+Noto Sans CJK TC Regular is Copyright 2014-2021 Adobe (http://www.adobe.com/).
+Noto is a trademark of Google Inc. The font is not covered by the Apache License.
