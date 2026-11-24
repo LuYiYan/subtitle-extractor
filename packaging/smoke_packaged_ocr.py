@@ -6,10 +6,13 @@ recognition, and OpenCC s2twp on a Chinese image path. It is the regression
 test for v1.4.3's ``No module named 'paddleocr'``.
 """
 
+import faulthandler
 import importlib
 import os
 import sys
 import tempfile
+
+faulthandler.enable()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -19,7 +22,9 @@ if ROOT not in sys.path:
 # aborts the process on Windows. The packaged launcher sets the same variable.
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# The offscreen plugin crashes after Torch has loaded its DLLs on the
+# Windows runner. The desktop app uses the normal Windows Qt platform.
+os.environ["QT_QPA_PLATFORM"] = "windows"
 
 REQUIRED_MODULES = (
     # Match the worker process: Qt is imported before Paddle. The reverse
@@ -63,6 +68,12 @@ def _require_modules():
             missing.append("%s: %s" % (name, exc))
         else:
             print("imported " + name, flush=True)
+        if name == "PySide6":
+            import PySide6
+            plugin = os.path.join(os.path.dirname(PySide6.__file__), "plugins")
+            os.environ["QT_PLUGIN_PATH"] = plugin
+            os.environ["PATH"] = plugin + os.pathsep + os.environ.get("PATH", "")
+            print("Qt plugins: " + plugin, flush=True)
     if missing:
         raise SystemExit("missing runtime modules:\n" + "\n".join(missing))
     from paddleocr import TextDetection, TextRecognition
