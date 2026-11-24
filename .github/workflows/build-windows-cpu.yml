@@ -118,6 +118,30 @@ jobs:
       env:
         QPT_Action: "True"
       shell: bash
+    - name: 安装 Inno Setup
+      shell: pwsh
+      run: |
+        $setup = Join-Path $env:TEMP "innosetup.exe"
+        Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $setup
+        Start-Process -FilePath $setup -ArgumentList "/VERYSILENT","/NORESTART","/SUPPRESSMSGBOXES" -Wait
+        $iscc = @(
+          "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+          "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+        ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $iscc) { throw "ISCC.exe was not installed" }
+        "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8NoBOM
+    - name: 编译安装程序
+      shell: pwsh
+      run: |
+        & $env:ISCC "/DAppVersion=$env:VERSION" "packaging\subtitle-extractor.iss"
+        $exe = "vsr_out\installer\subtitle-extractor-v$env:VERSION-windows-cpu-setup.exe"
+        if (-not (Test-Path $exe)) { throw "setup.exe was not created" }
+        $size = (Get-Item $exe).Length
+        Write-Host "setup.exe bytes: $size"
+        if ($size -gt 2000000000) { throw "setup.exe exceeds GitHub's 2 GB asset limit" }
+        $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
+        $name = Split-Path $exe -Leaf
+        "$hash  $name  ($size bytes)" | Set-Content -Encoding ascii "vsr_out\installer\$name.sha256"
     - name: 打成 7z
       run: bash packaging/archive_release.sh windows-cpu "$VERSION"
       shell: bash
@@ -128,8 +152,10 @@ jobs:
         make_latest: true
         tag_name: v${{ env.VERSION }}
         target_commitish: ${{ github.sha }}
-        name: 字幕去除与繁体转换 v${{ env.VERSION }}（Windows 便携版）
+        name: 字幕去除与繁体转换 v${{ env.VERSION }}（Windows 正式版）
         body_path: packaging/RELEASE_zh.md
         files: |
+          vsr_out/installer/subtitle-extractor-v${{ env.VERSION }}-windows-cpu-setup.exe
+          vsr_out/installer/subtitle-extractor-v${{ env.VERSION }}-windows-cpu-setup.exe.sha256
           vsr_out/Release/subtitle-extractor-v${{ env.VERSION }}-windows-cpu.7z*
           vsr_out/Release/subtitle-extractor-v${{ env.VERSION }}-windows-cpu.sha256
