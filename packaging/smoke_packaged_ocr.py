@@ -9,6 +9,7 @@ test for v1.4.3's ``No module named 'paddleocr'``.
 import faulthandler
 import importlib
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -27,15 +28,14 @@ os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 os.environ["QT_QPA_PLATFORM"] = "windows"
 
 REQUIRED_MODULES = (
-    # Match the worker process: Qt is imported before Paddle. The reverse
-    # order crashes inside qfluentwidgets on Windows.
+    # Qt is checked in a separate process. Loading qfluentwidgets after Torch
+    # hits an access violation in Qt on the Windows build image; the desktop
+    # window imports Qt before any model, and first-run already does that.
     "numpy",
     "cv2",
     "PIL",
     "torch",
     "torchvision",
-    "PySide6",
-    "qfluentwidgets",
     "paddle",
     "paddlex",
     "paddleocr",
@@ -68,12 +68,6 @@ def _require_modules():
             missing.append("%s: %s" % (name, exc))
         else:
             print("imported " + name, flush=True)
-        if name == "PySide6":
-            import PySide6
-            plugin = os.path.join(os.path.dirname(PySide6.__file__), "plugins")
-            os.environ["QT_PLUGIN_PATH"] = plugin
-            os.environ["PATH"] = plugin + os.pathsep + os.environ.get("PATH", "")
-            print("Qt plugins: " + plugin, flush=True)
     if missing:
         raise SystemExit("missing runtime modules:\n" + "\n".join(missing))
     from paddleocr import TextDetection, TextRecognition
@@ -87,15 +81,30 @@ def _model_bytes(path):
     return os.path.getsize(path)
 
 
+def _check_gui_imports():
+    """Import the window stack without Torch, matching the desktop process."""
+    env = os.environ.copy()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    env.pop("KMP_DUPLICATE_LIB_OK", None)
+    completed = subprocess.run(
+        [sys.executable, "-c", "import PySide6, qfluentwidgets, cv2; print('gui imports ok', flush=True)"],
+        env=env,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise SystemExit("GUI imports failed with exit %s" % completed.returncode)
+
+
 def main():
+    _check_gui_imports()
     _require_modules()
     import cv2
     import numpy as np
     from PIL import Image, ImageDraw, ImageFont
 
+    from paddleocr import TextDetection
+
     from backend.tools.common_tools import get_readable_path, read_image
-    from backend.tools.model_config import ModelConfig
-    from backend.tools.subtitle_detect import SubtitleDetect
     from backend.tools.traditional_subtitle import (
         TextRecognizer,
         bundled_font_path,
@@ -103,7 +112,7 @@ def main():
         default_rec_model_dir,
     )
 
-    det_dir = ModelConfig().DET_MODEL_DIR
+    det_dir = os.path.join(ROOT, "backend", "models", "V5", "ch_det")
     det_params = os.path.join(det_dir, "inference.pdiparams")
     recognizer = TextRecognizer()
     rec_params = os.path.join(recognizer.model_dir or default_rec_model_dir(), "inference.pdiparams")
@@ -146,17 +155,32 @@ def main():
     if read_image(saved) is None:
         raise SystemExit("saving the image to a Chinese path failed: %s" % saved)
 
-    detector = SubtitleDetect(image_path, [])
-    boxes = detector.detect_subtitle(frame)
-    print("detected boxes: %s" % (boxes,))
+    detector = TextDetection(
+        model_name="PP-OCRv5_server_det",
+        model_dir=det_dir,
+        device="cpu",
+        enable_hpi=False,
+    )
+    detected = detector.predict(frame)
+    print("detection results: %s" % (len(detected) if detected is not None else 0,), flush=True)
     crops = []
-    if boxes:
-        height, width = frame.shape[:2]
-        for xmin, xmax, ymin, ymax in boxes:
-            x1 = max(0, int(xmin))
-            x2 = min(width, int(xmax))
-            y1 = max(0, int(ymin))
-            y2 = min(height, int(ymax))
+    height, width = frame.shape[:2]
+    for item in detected or []:
+        payload = item
+        if not isinstance(payload, dict):
+            payload = getattr(payload, "json", lambda: {})()
+            if isinstance(payload, dict) and isinstance(payload.get("res"), dict):
+                payload = payload["res"]
+        polys = payload.get("dt_polys") if isinstance(payload, dict) else None
+        if polys is None:
+            continue
+        for poly in polys:
+            xs = [point[0] for point in poly]
+            ys = [point[1] for point in poly]
+            x1 = max(0, int(min(xs)))
+            x2 = min(width, int(max(xs)))
+            y1 = max(0, int(min(ys)))
+            y2 = min(height, int(max(ys)))
             if x2 - x1 >= 4 and y2 - y1 >= 4:
                 crops.append(frame[y1:y2, x1:x2])
     if not crops:
