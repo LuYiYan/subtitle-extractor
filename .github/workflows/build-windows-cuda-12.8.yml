@@ -1,6 +1,6 @@
 name: Build Windows CUDA 12.8
 
-# 显卡加速包按需手动构建，避免和 CPU 试用包抢同一个 Release。
+# 显卡加速正式版按需手动构建，避免和 CPU 正式版抢同一个 Release。
 on:
   workflow_dispatch:
     inputs:

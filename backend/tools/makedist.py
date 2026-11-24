@@ -43,7 +43,7 @@ def main():
 
     args = parser.parse_args()
 
-    # 识别模型不在上游仓库里。打进包里后，试用者第一次转繁体不必再下载。
+    # 识别模型不在上游仓库里。打进包里后，用户第一次转繁体不必再下载。
     try:
         _ensure_recognition_model()
     except Exception as exc:

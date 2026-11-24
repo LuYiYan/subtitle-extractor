@@ -4,9 +4,9 @@
 
 关闭这项能力时，擦除流程与上游一致。
 
-## 给普通用户：直接下载 Windows 版
+## Windows 正式版
 
-不用安装 Python。当前仓库是公开的，发布页上的文件任何人都能下载。
+这是可直接日常使用的 Windows 便携正式版。不用安装 Python。当前仓库是公开的，发布页上的文件任何人都能下载。
 
 1. 打开 [Releases](https://github.com/LuYiYan/subtitle-extractor/releases/latest)。
 2. 下载所有名字里带 **`windows-cpu`** 的文件（便携版，不挑显卡）。
@@ -16,23 +16,23 @@
 4. 第一次打开会先出现「正在准备运行环境」窗口。请等它自己关掉。准备完成后只留下「字幕去除器」窗口，没有需要一直开着的黑窗口。关掉准备窗口只会中断准备，不会在程序已经打开之后把界面关掉。
 5. 之后再双击「启动程序.exe」，只打开图形界面。
 
-试视频：
+处理视频：
 
 1. 点「打开」，选一个短的 mp4，在画面上框住底部字幕。
 2. 只去硬字幕：不要开「硬字幕转繁体」，点「运行」。
 3. 把简体硬字幕换成台湾用语繁体：打开「硬字幕转繁体」，再点「运行」。需要字幕文件时再打开「导出繁体 SRT」。
 4. 校对过 SRT 后，到「设置」里的「繁体字幕」，选中那份文件并打开「烧录修正后的 SRT」，再运行。
 
-试图片：
+处理图片：
 
 1. 点右侧 **「导入图片」**，选 jpg、png 或 webp。左侧预览会显示这张图。
 2. 在预览上框住要转换的文字，打开「硬字幕转繁体」，再点「运行」。图片会自动用 LAMA。
 3. 完成后，预览左边是原图、右边是结果。点 **「保存图片」**，把结果发给客户。
 4. 只想擦字、不重写：不要打开「硬字幕转繁体」，运行后再保存。
 
-这个 CPU 包里已经有：Python、CPU 版 PyTorch 和 Paddle、FFmpeg、Noto Sans CJK TC、去字幕模型（STTN / LAMA / ProPainter）、文字检测模型，以及文字识别模型 `PP-OCRv5_server_rec`。转繁体的目标是台湾用语繁体（OpenCC `s2twp`），英文和数字保持原样。正常使用不用再下载模型。只有自己打包时跳过了识别模型，第一次转繁体才会由 PaddleOCR 联网下载。
+这个 CPU 包功能完整，已经带有：Python、CPU 版 PyTorch 和 Paddle、FFmpeg、Noto Sans CJK TC、去字幕模型（STTN / LAMA / ProPainter）、文字检测模型，以及文字识别模型 `PP-OCRv5_server_rec`。转繁体的目标是台湾用语繁体（OpenCC `s2twp`），英文和数字保持原样。正常使用不用再下载模型。只有自己打包时跳过了识别模型，第一次转繁体才会由 PaddleOCR 联网下载。CPU 版不依赖显卡，速度比显卡版慢。
 
-同一发布页如果还有 `windows-directml` 或 `windows-nvidia-cuda` 压缩包，那是显卡加速版，打开方式相同。普通试用请用 `windows-cpu`。
+同一发布页如果还有 `windows-directml` 或 `windows-nvidia-cuda` 压缩包，那是显卡加速正式版，打开方式相同。没有这些文件时，请使用 `windows-cpu`。
 
 macOS 和 Linux 没有单独的桌面安装包，这和上游项目一样。请继续看下面的源码安装；维护者也可以在 Actions 里手动运行 Docker 工作流。
 
@@ -298,7 +298,7 @@ python backend/tools/makedist.py
 
 打包结果在仓库上一级目录的 `vsr_out/Release/`。`makedist.py` 会把入口换成 QPT 自带的窗口程序 `Main.exe`，并用 `pythonw.exe` 启动界面，所以命令行窗口不再挂住图形界面。
 
-- 双击 `启动程序.exe` 打开界面。请把还没运行过的 Release 目录交给别人。QPT 的部署文件在第一次运行后会被用掉，本机先双击再压缩，别人可能打不开。要自己试，请用 `vsr_out/Debug/`。
+- 双击 `启动程序.exe` 打开界面。请把还没运行过的 Release 目录交给别人。QPT 的部署文件在第一次运行后会被用掉，本机先双击再压缩，别人可能打不开。要在打包机上检查，请用 `vsr_out/Debug/`。
 - `使用说明.txt` 会放在 `启动程序.exe` 旁边。
 - 显卡版把最后一条换成 `python backend/tools/makedist.py --cuda 11.8`、`--cuda 12.6`、`--cuda 12.8` 或 `--directml`，并先装对应的 Torch。
 
