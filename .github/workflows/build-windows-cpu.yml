@@ -122,7 +122,8 @@ jobs:
       shell: pwsh
       run: |
         $setup = Join-Path $env:TEMP "innosetup.exe"
-        Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $setup
+        curl.exe -fsSL -o $setup "https://github.com/jrsoftware/issrc/releases/download/is-6_4_0/innosetup-6.4.0.exe"
+        if (-not (Test-Path $setup)) { throw "Inno Setup download failed" }
         Start-Process -FilePath $setup -ArgumentList "/VERYSILENT","/NORESTART","/SUPPRESSMSGBOXES" -Wait
         $iscc = @(
           "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
