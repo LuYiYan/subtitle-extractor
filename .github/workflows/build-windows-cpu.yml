@@ -154,8 +154,9 @@ jobs:
       shell: pwsh
       run: |
         $ErrorActionPreference = "Stop"
-        $src = "vsr_out\Release"
-        $dst = "vsr_out\SmokeRelease"
+        $root = (Get-Location).Path
+        $src = Join-Path $root "vsr_out\Release"
+        $dst = Join-Path $root "vsr_out\SmokeRelease"
         if (Test-Path $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
         Copy-Item -LiteralPath $src -Destination $dst -Recurse
         $env:QPT_COLOR = "False"
