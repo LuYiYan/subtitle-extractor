@@ -22,11 +22,15 @@ os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 REQUIRED_MODULES = (
+    # Match the worker process: Qt is imported before Paddle. The reverse
+    # order crashes inside qfluentwidgets on Windows.
     "numpy",
     "cv2",
     "PIL",
     "torch",
     "torchvision",
+    "PySide6",
+    "qfluentwidgets",
     "paddle",
     "paddlex",
     "paddleocr",
@@ -39,8 +43,6 @@ REQUIRED_MODULES = (
     "pypdfium2",
     "imagesize",
     "bidi",
-    "PySide6",
-    "qfluentwidgets",
     "einops",
     "skimage",
     "scipy",
