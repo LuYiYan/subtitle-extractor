@@ -168,8 +168,7 @@ jobs:
         # "Running" contains "ing", so sitecustomize does not start setup while we edit this copy.
         $env:QPT_MODE = "Running"
         # Only the smoke copy: a QPT warning box would freeze the runner.
-        & $python -c "from pathlib import Path; import sys; p=Path(sys.argv[1]); t=p.read_text(encoding='utf-8'); old='msg = win32api.MessageBox(0, text, title, flag)'; new='print(title); print(text); msg = 1';
-assert old in t, 'could not disarm QPT dialog'; p.write_text(t.replace(old, new, 1), encoding='utf-8')" (Join-Path $dst "Python\Lib\site-packages\qpt\kernel\qos.py")
+        & $python -c "from pathlib import Path; import sys; p=Path(sys.argv[1]); t=p.read_text(encoding='utf-8'); old='msg = win32api.MessageBox(0, text, title, flag)'; new='print(title); print(text); msg = 1'; assert old in t, 'could not disarm QPT dialog'; p.write_text(t.replace(old, new, 1), encoding='utf-8')" (Join-Path $dst "Python\Lib\site-packages\qpt\kernel\qos.py")
         if ($LASTEXITCODE -ne 0) { throw "could not disarm the QPT dialog in the smoke copy" }
         $env:QPT_MODE = "Run"
         $env:QPT_SETUP_ONLY = "1"
