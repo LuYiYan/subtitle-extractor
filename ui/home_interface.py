@@ -7,7 +7,7 @@ import multiprocessing
 import time
 import traceback
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
-from PySide6.QtCore import Slot, QRect, Signal
+from PySide6.QtCore import Qt, Slot, QRect, Signal
 from PySide6 import QtWidgets
 from datetime import datetime
 from qfluentwidgets import (PushButton, PrimaryPushButton, CardWidget, TextEdit, FluentIcon, BodyLabel)
@@ -97,7 +97,7 @@ class HomeInterface(QWidget):
         
         # 输出文本区域
         self.output_text = TextEdit()
-        self.output_text.setMinimumHeight(150)
+        self.output_text.setMinimumHeight(96)
         self.output_text.setReadOnly(True)
         self.output_text.document().setDocumentMargin(10)        
         # 连接滚动条值变化信号
@@ -112,9 +112,19 @@ class HomeInterface(QWidget):
 
         main_layout.addLayout(left_layout, 2)
 
-        # 右侧设置区域
+        # 右侧设置区域。操作按钮固定在底部，上面的卡片放进滚动区，
+        # 这样在 125% / 150% 缩放下「打开」和「运行」不会被窗口底边切掉。
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
+
+        scroll = QtWidgets.QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_content = QWidget(scroll)
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(10)
 
         image_card = CardWidget(self)
         image_layout = QVBoxLayout(image_card)
@@ -136,13 +146,13 @@ class HomeInterface(QWidget):
         self.image_status_label = BodyLabel(tr['ImageConvert']['StatusEmpty'])
         self.image_status_label.setWordWrap(True)
         image_layout.addWidget(self.image_status_label)
-        right_layout.addWidget(image_card)
+        scroll_layout.addWidget(image_card)
 
         # 设置容器
         settings_container = CardWidget(self)
         self.setting_interface = SettingInterface(settings_container)
         settings_container.setLayout(self.setting_interface)
-        right_layout.addWidget(settings_container)
+        scroll_layout.addWidget(settings_container)
         
         # 添加任务列表容器
         task_list_container = CardWidget(self)
@@ -154,12 +164,15 @@ class HomeInterface(QWidget):
         self.task_list_component.task_deleted.connect(self.on_task_deleted)
         task_list_layout.addWidget(self.task_list_component)
         task_list_container.setLayout(task_list_layout)
-        right_layout.addWidget(task_list_container, 1)  # 占满剩余空间
+        scroll_layout.addWidget(task_list_container, 1)
+        scroll.setWidget(scroll_content)
+        right_layout.addWidget(scroll, 1)
         
         # 操作按钮容器
         button_container = CardWidget(self)
+        button_container.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         button_layout = QHBoxLayout()
-        button_layout.setContentsMargins(16, 16, 16, 16)
+        button_layout.setContentsMargins(16, 12, 16, 12)
         button_layout.setSpacing(8)
         
         self.file_button = PushButton(tr['SubtitleExtractorGUI']['Open'], self)
@@ -637,7 +650,11 @@ class HomeInterface(QWidget):
             return False
         self.video_path = path
         self.video_cap = None
-        frame = read_image(get_readable_path(path))
+        frame = read_image(path)
+        if frame is None:
+            readable = get_readable_path(path)
+            if readable and readable != path:
+                frame = read_image(readable)
         if frame is None:
             return False
         self.frame_count = 1

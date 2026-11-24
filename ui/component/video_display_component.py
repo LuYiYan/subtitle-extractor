@@ -35,17 +35,17 @@ class VideoDisplayComponent(QWidget):
         # 创建右键菜单
         self.__init_context_menu()
         
-        # 获取屏幕大小
-        screen = QtWidgets.QApplication.primaryScreen().size()
+        # 获取屏幕可用区域。宽窗口若按 16:9 把预览拉得很高，底部的「打开」「运行」会被裁掉。
+        screen = QtWidgets.QApplication.primaryScreen().availableGeometry()
         self.screen_width = screen.width()
         self.screen_height = screen.height()
+        self.max_preview_height = max(220, self.screen_height - 360)
         
-        # 设置视频预览区域大小（根据屏幕宽度动态调整）
+        # 设置视频预览区域大小（根据屏幕宽度和高度动态调整）
         self.video_preview_width = 960
-        self.video_preview_height = self.video_preview_width * 9 // 16
         if self.screen_width // 2 < 960:
             self.video_preview_width = 640
-            self.video_preview_height = self.video_preview_width * 9 // 16
+        self.video_preview_height = min(self.video_preview_width * 9 // 16, self.max_preview_height)
             
         # 视频相关参数
         self.frame_width = None
@@ -134,11 +134,18 @@ class VideoDisplayComponent(QWidget):
         # 添加到布局
         black_layout.addWidget(ratio_container)
 
-        # 添加一个事件过滤器来处理大小变化
+        # 添加一个事件过滤器来处理大小变化。高度不超过屏幕留给日志和按钮的空间。
+        max_preview_height = self.max_preview_height
         class RatioEventFilter(QObject):
             def eventFilter(self, obj, event):
                 if event.type() == QEvent.Resize:
-                    obj.setFixedHeight(obj.width() * 9 // 16)
+                    height = obj.width() * 9 // 16
+                    if height > max_preview_height:
+                        height = max_preview_height
+                    if height < 1:
+                        height = 1
+                    if obj.height() != height:
+                        obj.setFixedHeight(height)
                 return False
 
         ratio_filter = RatioEventFilter(ratio_container)

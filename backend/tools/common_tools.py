@@ -44,12 +44,27 @@ def merge_big_file_if_not_exists(dir, file, man_filename = None):
             fs.man_filename = man_filename
         fs.merge(input_dir=dir)
 
+def windows_short_path_or_original(path, short_length, short_value):
+    """Use an 8.3 path when Windows created one, otherwise keep the original.
+
+    GetShortPathNameW returns 0 on paths that have no short name. Modern
+    Windows often disables 8.3 names, and a Chinese folder such as
+    「免抽气压缩收纳袋」then has no short path. Returning the empty buffer
+    makes OpenCV and the image reader look at a blank path.
+    """
+    if not path:
+        return path
+    if short_length and short_value:
+        return short_value
+    return path
+
+
 def get_readable_path(path):
-    if sys.platform != 'win32':
+    if sys.platform != 'win32' or not path:
         return path
     buf = ctypes.create_unicode_buffer(4096)
-    ctypes.windll.kernel32.GetShortPathNameW(path, buf, 4096)
-    return buf.value
+    length = ctypes.windll.kernel32.GetShortPathNameW(str(path), buf, len(buf))
+    return windows_short_path_or_original(path, length, buf.value)
 
 def read_image(path):
     if os.path.getsize(path) > 100*1024*1024: # 100MB

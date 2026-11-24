@@ -8,8 +8,8 @@
 
 这是可直接日常使用的 Windows 正式版。不用安装 Python。当前仓库是公开的，发布页上的文件任何人都能下载。
 
-1. 打开 [Releases](https://github.com/LuYiYan/subtitle-extractor/releases/latest)，下载 **`subtitle-extractor-v1.4.3-windows-cpu-setup.exe`**。
-2. 双击安装程序，选择安装目录。开始菜单会加入「字幕去除器」。需要桌面图标时，在安装页勾选。
+1. 打开 [Releases](https://github.com/LuYiYan/subtitle-extractor/releases/latest)，下载 **`subtitle-extractor-v1.4.4-windows-cpu-setup.exe`**。
+2. 双击安装程序。默认安装到 `C:\SubtitleExtractor`。可以改盘符，但路径只能是英文和数字，不能有中文或空格，例如 `E:\SubtitleExtractor`。开始菜单会加入「字幕去除器」。需要桌面图标时，在安装页勾选。
 3. 从开始菜单打开「字幕去除器」。
 4. 第一次打开会先出现「正在准备运行环境」窗口。请等它自己关掉。准备完成后只留下软件窗口。关掉准备窗口只会中断准备，不会在程序已经打开之后把界面关掉。
 5. 以后从开始菜单打开即可。要删除时，到 Windows 设置的「应用」里卸载「字幕去除与繁体转换」。
@@ -279,7 +279,7 @@ python gui.py
 
 ## 打包 Windows 便携版
 
-产物和上游相同：一个免安装目录，入口是「启动程序.exe」，再用 7-Zip 打成单个 `.7z` 或每卷不超过 2000MB 的分卷。打包工具是 [QPT](https://github.com/QPT-Family/QPT) `1.0b8`，不是 PyInstaller，也不是 Inno Setup。上游没有提供 macOS / Linux 安装包；本仓库同样只自动发布 Windows CPU 便携版。CUDA、DirectML 包和 Docker 镜像保留为手动工作流。
+产物和上游相同：一个免安装目录，入口是「启动程序.exe」，再用 7-Zip 打成单个 `.7z` 或每卷不超过 2000MB 的分卷。打包工具是 [QPT](https://github.com/QPT-Family/QPT) `1.0b8`。正式下载再由 Inno Setup 6 打成安装程序。上游没有提供 macOS / Linux 安装包；本仓库同样只自动发布 Windows CPU 版。CUDA、DirectML 包和 Docker 镜像保留为手动工作流。
 
 在 Windows 10 或 Windows 11 上，用 Python 3.12：
 
@@ -311,22 +311,22 @@ python backend/tools/makedist.py
 打成可上传的压缩包（在仓库根目录，已装 7-Zip 并把 `7z` 加进 PATH）：
 
 ```shell
-bash packaging/archive_release.sh windows-cpu 1.4.3
+bash packaging/archive_release.sh windows-cpu 1.4.4
 ```
 
-版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.3-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
+版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.4-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
 
 Windows 安装程序使用 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。先完成上面的 `makedist.py`，再在仓库根目录执行：
 
 ```shell
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.4.3 packaging\subtitle-extractor.iss
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.4.4 packaging\subtitle-extractor.iss
 ```
 
-安装包写到 `vsr_out\installer\subtitle-extractor-v1.4.3-windows-cpu-setup.exe`。安装目录需要能写入，因为第一次打开会在安装目录里展开运行环境。脚本默认安装到「Program Files\字幕去除与繁体转换」，并允许普通用户写入该目录。
+安装包写到 `vsr_out\installer\subtitle-extractor-v1.4.4-windows-cpu-setup.exe`。安装目录需要能写入，因为第一次打开会在安装目录里展开运行环境。默认目录是 `C:\SubtitleExtractor`。向导会拒绝中文、空格和特殊字符。开始菜单和卸载名称仍是「字幕去除器」和「字幕去除与繁体转换」。脚本允许普通用户写入安装目录。
 
 GitHub Actions：
 
-- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.3](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.3)。正式下载是 `windows-cpu-setup.exe`，`.7z` 是便携包。
+- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.4](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.4)。正式下载是 `windows-cpu-setup.exe`，`.7z` 是便携包。发布前会在打包好的目录里做一次首次准备，并跑通文字识别和繁体转换。
 - 「Build Windows CUDA 11.8 / 12.6 / 12.8」和「Build Windows DirectML」只在 Actions 页面手动运行，产物附加到同一个 Release。
 - 构建机会先 `actions/checkout` 打开 `lfs: true`，避免把 LFS 指针打进安装包。
 - QPT 1.0b8 在读取依赖时可能遇到 `TypeError`。工作流会改 `qpt/kernel/qpackage.py` 里 `dep = pkg.requires()` 那一行，改成先 `try`，遇到 `TypeError` 就 `continue`。本机打包如果停在这里，做同样的修改。

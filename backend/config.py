@@ -7,7 +7,7 @@ from backend.tools.constant import InpaintMode, SubtitleDetectMode
 import configparser
 
 # 项目版本号
-VERSION = "1.4.3"
+VERSION = "1.4.4"
 # 代码源自 YaoFANGUK/video-subtitle-remover（Apache-2.0）。关于页指向本仓库。
 UPSTREAM_PROJECT_HOME_URL = "https://github.com/YaoFANGUK/video-subtitle-remover"
 PROJECT_HOME_URL = "https://github.com/LuYiYan/subtitle-extractor"

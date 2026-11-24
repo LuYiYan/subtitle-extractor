@@ -64,6 +64,15 @@ def main():
     if os.getenv("QPT_Action") == "True":
         set_default_pip_source(PYPI_PIP_SOURCE)
 
+    # QPT 1.0b8 stores paddleocr and paddlex under the same module name, so
+    # only one of them is installed on first launch. Give each its own folder
+    # before CreateExecutableModule reads requirements.txt.
+    helper_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qpt_paddle_modules.py")
+    spec = importlib.util.spec_from_file_location("qpt_paddle_modules", helper_path)
+    paddle_modules = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(paddle_modules)
+    paddle_modules.apply_unique_qpt_paddle_module_names()
+
     module = CEM(
         work_dir=WORK_DIR,
         launcher_py_path=LAUNCH_PATH,

@@ -88,6 +88,35 @@ jobs:
     - run: pip install torch==2.7.0 torchvision==0.22.0
     - run: pip install -r requirements.txt
     - run: pip freeze > requirements.txt
+    - name: 检查冻结依赖
+      shell: bash
+      run: |
+        python - <<'PY'
+        from pathlib import Path
+        text = Path("requirements.txt").read_text(encoding="utf-8").lower()
+        needed = [
+            "paddleocr",
+            "paddlex",
+            "paddlepaddle",
+            "shapely",
+            "pyclipper",
+            "pypdfium2",
+            "imagesize",
+            "python-bidi",
+            "opencc",
+            "pyyaml",
+            "opencv-python",
+            "pillow",
+            "torch",
+        ]
+        def present(name):
+            return name in text or name.replace("-", "_") in text
+        missing = [name for name in needed if not present(name)]
+        if missing:
+            raise SystemExit("frozen requirements missing: " + ", ".join(missing))
+        print("frozen requirements include the Traditional conversion stack")
+        PY
+        python -m unittest tests.windowed_launcher_test tests.traditional_subtitle_test tests.install_path_test tests.path_test
     - run: pip install QPT==1.0b8 setuptools
     - name: 获取 site-packages 路径
       shell: bash
@@ -113,11 +142,51 @@ jobs:
         test -f ./vsr_out/Release/启动程序.exe && \
         test -f ./vsr_out/Release/使用说明.txt && \
         grep -q pythonw.exe ./vsr_out/Release/configs/entry.cmd && \
+        ! grep -q "raise SystemExit" ./vsr_out/Release/Python/Lib/site-packages/sitecustomize.py && \
         python -c "import struct,sys; p=r'./vsr_out/Release/启动程序.exe'; d=open(p,'rb').read(512); o=struct.unpack_from('<I', d, 0x3C)[0]; sub=struct.unpack_from('<H', open(p,'rb').read(), o+24+68)[0]; sys.exit(0 if sub==2 else 'launcher is still a console exe')" && \
+        test -d ./vsr_out/Release/opt/AddPaddlePaddlePackage_paddleocr && \
+        test -d ./vsr_out/Release/opt/AddPaddlePaddlePackage_paddlex && \
         rm -rf ./vsr_out/Debug
       env:
         QPT_Action: "True"
       shell: bash
+    - name: 验证打包后的繁体识别
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $src = "vsr_out\Release"
+        $dst = "vsr_out\SmokeRelease"
+        if (Test-Path $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
+        Copy-Item -LiteralPath $src -Destination $dst -Recurse
+        $env:QPT_COLOR = "False"
+        $env:PYTHONUNBUFFERED = "1"
+        $env:PYTHONIOENCODING = "utf-8"
+        $env:QT_QPA_PLATFORM = "offscreen"
+        $env:PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK = "True"
+        $python = Join-Path $dst "Python\python.exe"
+        $work = Join-Path $dst "resources"
+        # "Running" contains "ing", so sitecustomize does not start setup while we edit this copy.
+        $env:QPT_MODE = "Running"
+        # Only the smoke copy: a QPT warning box would freeze the runner.
+        & $python -c "from pathlib import Path; import sys; p=Path(sys.argv[1]); t=p.read_text(encoding='utf-8'); old='msg = win32api.MessageBox(0, text, title, flag)'; new='print(title); print(text); msg = 1';
+assert old in t, 'could not disarm QPT dialog'; p.write_text(t.replace(old, new, 1), encoding='utf-8')" (Join-Path $dst "Python\Lib\site-packages\qpt\kernel\qos.py")
+        if ($LASTEXITCODE -ne 0) { throw "could not disarm the QPT dialog in the smoke copy" }
+        $env:QPT_MODE = "Run"
+        $env:QPT_SETUP_ONLY = "1"
+        try {
+          Push-Location $work
+          & $python gui.py
+          if ($LASTEXITCODE -ne 0) { throw "first-run setup failed with exit $LASTEXITCODE" }
+          $paddleocr = Join-Path $dst "Python\Lib\site-packages\paddleocr\__init__.py"
+          if (-not (Test-Path -LiteralPath $paddleocr)) { throw "first-run did not install paddleocr" }
+          $env:QPT_MODE = "Running"
+          Remove-Item Env:QPT_SETUP_ONLY -ErrorAction SilentlyContinue
+          & $python packaging\smoke_packaged_ocr.py
+          if ($LASTEXITCODE -ne 0) { throw "packaged OCR smoke failed with exit $LASTEXITCODE" }
+        } finally {
+          Pop-Location -ErrorAction SilentlyContinue
+          if (Test-Path $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
+        }
     - name: 安装 Inno Setup
       shell: pwsh
       run: |
