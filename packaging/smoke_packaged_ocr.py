@@ -15,20 +15,23 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+# Torch and Paddle each ship libiomp5md.dll. Importing both without this
+# aborts the process on Windows. The packaged launcher sets the same variable.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 REQUIRED_MODULES = (
-    "paddle",
-    "paddleocr",
-    "paddlex",
-    "opencc",
+    "numpy",
     "cv2",
     "PIL",
     "torch",
     "torchvision",
+    "paddle",
+    "paddlex",
+    "paddleocr",
+    "opencc",
     "av",
-    "numpy",
     "yaml",
     "requests",
     "shapely",
@@ -51,10 +54,13 @@ REQUIRED_MODULES = (
 def _require_modules():
     missing = []
     for name in REQUIRED_MODULES:
+        print("import " + name, flush=True)
         try:
             importlib.import_module(name)
         except Exception as exc:
             missing.append("%s: %s" % (name, exc))
+        else:
+            print("imported " + name, flush=True)
     if missing:
         raise SystemExit("missing runtime modules:\n" + "\n".join(missing))
     from paddleocr import TextDetection, TextRecognition

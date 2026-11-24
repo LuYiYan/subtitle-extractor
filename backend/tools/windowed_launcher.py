@@ -32,6 +32,7 @@ def render_entry_cmd(main_file):
         "set QPT_MODE=Run",
         "set PYTHONUNBUFFERED=1",
         "set PYTHONIOENCODING=utf-8",
+        "set KMP_DUPLICATE_LIB_OK=TRUE",
         "set QPT_PY_MAIN_FILE=" + main_file,
         'if not exist "..\\Python\\pythonw.exe" (',
         "  echo pythonw.exe was not packaged.",

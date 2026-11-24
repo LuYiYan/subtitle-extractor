@@ -180,6 +180,7 @@ jobs:
           $paddleocr = Join-Path $dst "Python\Lib\site-packages\paddleocr\__init__.py"
           if (-not (Test-Path -LiteralPath $paddleocr)) { throw "first-run did not install paddleocr" }
           $env:QPT_MODE = "Running"
+          $env:KMP_DUPLICATE_LIB_OK = "TRUE"
           Remove-Item Env:QPT_SETUP_ONLY -ErrorAction SilentlyContinue
           & $python packaging\smoke_packaged_ocr.py
           if ($LASTEXITCODE -ne 0) { throw "packaged OCR smoke failed with exit $LASTEXITCODE" }

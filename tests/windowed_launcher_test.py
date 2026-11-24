@@ -19,6 +19,7 @@ class WindowedLauncherTest(unittest.TestCase):
         self.assertIn('start "" /D "%CD%" "..\\Python\\pythonw.exe"', script)
         self.assertNotIn("pause", script.lower())
         self.assertIn("QPT_SETUP_ONLY=1", script)
+        self.assertIn("KMP_DUPLICATE_LIB_OK=TRUE", script)
         self.assertIn("set QPT_SETUP_ONLY=", script)
         self.assertIn("python.exe", script)
         self.assertLess(script.index("QPT_SETUP_ONLY=1"), script.index('start "" /D "%CD%" "..\\Python\\pythonw.exe"'))
