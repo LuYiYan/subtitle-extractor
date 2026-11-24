@@ -1,7 +1,7 @@
 name: Build Windows CPU
 
 # 正式版 Windows 便携包。与上游一样用 QPT 打出「启动程序.exe」，再打成不超过
-# GitHub 单文件 2GB 限制的 7z。推送到 main 或手动运行时发布。
+# GitHub 单文件 2GB 限制的 7z。推送到 main、当前打包分支，或手动运行时发布。
 on:
   workflow_dispatch:
     inputs:
@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - main
+      - cursor/windows-portable-c61f
 
 permissions:
   contents: write

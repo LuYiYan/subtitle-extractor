@@ -166,6 +166,11 @@ class SubtitleExtractorGUI(FluentWindow):
 
 
 if __name__ == '__main__':
+    # First-run preparation already ran inside sitecustomize. Exit here,
+    # after site import, so the preparation console can close. Raising
+    # SystemExit inside sitecustomize aborts pip on Python 3.12.
+    if os.environ.get("QPT_SETUP_ONLY") == "1":
+        raise SystemExit(0)
     multiprocessing.set_start_method("spawn")
     QApplication.setHighDpiScaleFactorRoundingPolicy(
     Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)

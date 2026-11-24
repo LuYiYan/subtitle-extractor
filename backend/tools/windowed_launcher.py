@@ -19,8 +19,6 @@ import os
 import shutil
 import struct
 
-_SITECUSTOMIZE_MARKER = "QPT_SETUP_ONLY"
-
 
 def render_entry_cmd(main_file):
     """Batch script placed at Release/configs/entry.cmd."""
@@ -54,8 +52,15 @@ def render_entry_cmd(main_file):
 def render_sitecustomize(original):
     """Keep QPT's first-run setup, then return control to gui.py.
 
-    A setup-only launch must stop before the Qt window, and pythonw has no
-    console, so stdout/stderr cannot stay as None.
+    pythonw has no console, so stdout/stderr cannot stay as None.
+
+    Do not raise SystemExit here. sitecustomize runs while Python is still
+    importing site. On Python 3.12 that abort is reported as
+    ``Fatal Python error: init_import_site`` and the process never reaches
+    ``-m pip``. QPT's first-run install invokes pip with the same environment,
+    so a setup-only exit in this file makes every package install fail.
+    gui.py exits normally after setup when QPT_SETUP_ONLY=1; pip never loads
+    gui.py.
     """
     text = original or ""
     prefix = (
@@ -70,12 +75,11 @@ def render_sitecustomize(original):
         text = prefix + text
     elif "sys.stdout is None" not in text:
         text = prefix + text
-    exit_line = (
-        "\nif os.environ.get('QPT_SETUP_ONLY') == '1':\n"
-        "    raise SystemExit(0)\n"
+    # Drop the v1.4.1 hook if a previous patch already appended it.
+    text = text.replace(
+        "\nif os.environ.get('QPT_SETUP_ONLY') == '1':\n    raise SystemExit(0)\n",
+        "\n",
     )
-    if _SITECUSTOMIZE_MARKER not in text:
-        text = text.rstrip() + exit_line
     return text
 
 

@@ -39,10 +39,25 @@ class WindowedLauncherTest(unittest.TestCase):
         )
         updated = render_sitecustomize(original)
         self.assertIn("sys.stdout is None", updated)
-        self.assertIn("QPT_SETUP_ONLY", updated)
-        self.assertIn("SystemExit(0)", updated)
+        self.assertNotIn("SystemExit", updated)
+        self.assertNotIn("QPT_SETUP_ONLY", updated)
         self.assertIn("RunExecutableModule", updated)
         self.assertEqual(render_sitecustomize(updated), updated)
+
+    def test_sitecustomize_strips_the_v141_fatal_exit(self):
+        broken = (
+            "import os\n"
+            "import sys\n"
+            "if sys.stdout is None:\n"
+            "    sys.stdout = open(os.devnull, 'w', encoding='utf-8', errors='replace')\n"
+            "if \"ing\" not in os.environ.get(\"QPT_MODE\"):\n"
+            "    pass\n"
+            "if os.environ.get('QPT_SETUP_ONLY') == '1':\n"
+            "    raise SystemExit(0)\n"
+        )
+        updated = render_sitecustomize(broken)
+        self.assertNotIn("SystemExit", updated)
+        self.assertNotIn("QPT_SETUP_ONLY", updated)
 
 
 if __name__ == "__main__":

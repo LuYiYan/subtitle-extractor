@@ -16,6 +16,12 @@
 4. 第一次打开会先出现「正在准备运行环境」窗口。请等它自己关掉。准备完成后只留下「字幕去除器」窗口，没有需要一直开着的黑窗口。关掉准备窗口只会中断准备，不会在程序已经打开之后把界面关掉。
 5. 之后再双击「启动程序.exe」，只打开图形界面。
 
+已经下载 v1.4.1、并且第一次准备窗口报错的人，请改下 [v1.4.2](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.2)。若暂时不能重新下载，可以按下面改已解压的 v1.4.1，再重新打开：
+
+1. 用记事本打开 `Python\Lib\site-packages\sitecustomize.py`，删掉最后的 `if os.environ.get('QPT_SETUP_ONLY') == '1':` 和下一行 `raise SystemExit(0)`，保存。
+2. 如果有 `configs\run_act.lock`，删掉这个文件。点过错误对话框之后，这个文件可能会留下，留下就会跳过准备。
+3. 再双击 `启动程序.exe`。准备窗口会完成安装并打开软件；这次准备窗口会留到你关掉软件。关掉之后如果又弹出一次「字幕去除器」，用后面这次即可，它不再挂着命令行。
+
 处理视频：
 
 1. 点「打开」，选一个短的 mp4，在画面上框住底部字幕。
@@ -305,14 +311,14 @@ python backend/tools/makedist.py
 打成可上传的压缩包（在仓库根目录，已装 7-Zip 并把 `7z` 加进 PATH）：
 
 ```shell
-bash packaging/archive_release.sh windows-cpu 1.4.1
+bash packaging/archive_release.sh windows-cpu 1.4.2
 ```
 
-版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.1-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
+版本号要和 `backend/config.py` 里的 `VERSION` 一致。生成 `vsr_out/Release/subtitle-extractor-v1.4.2-windows-cpu.7z`，超过 2GB 时会变成 `.7z.001`、`.7z.002`。
 
 GitHub Actions：
 
-- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.1](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.1)。
+- 「Build Windows CPU」在推送到 `main` 时自动构建，并发布到 `v<VERSION>`，例如 [v1.4.2](https://github.com/LuYiYan/subtitle-extractor/releases/tag/v1.4.2)。
 - 「Build Windows CUDA 11.8 / 12.6 / 12.8」和「Build Windows DirectML」只在 Actions 页面手动运行，产物附加到同一个 Release。
 - 构建机会先 `actions/checkout` 打开 `lfs: true`，避免把 LFS 指针打进安装包。
 - QPT 1.0b8 在读取依赖时可能遇到 `TypeError`。工作流会改 `qpt/kernel/qpackage.py` 里 `dep = pkg.requires()` 那一行，改成先 `try`，遇到 `TypeError` 就 `continue`。本机打包如果停在这里，做同样的修改。
